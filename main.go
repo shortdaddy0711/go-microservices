@@ -1,24 +1,49 @@
 package main
 
 import (
-	"fmt"
-	"io/ioutil"
+	"context"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"time"
+
+	"github.com/shortdaddy0711/go-microservices/handlers"
 )
 
 func main() {
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		log.Println("Hello World")
-		d, err := ioutil.ReadAll(r.Body)
+	l := log.New(os.Stdout, "product-api", log.LstdFlags)
+	hh := handlers.NewHello(l)
+	gh := handlers.NewGoodbye(l)
+	ph := handlers.NewProducts(l)
 
+	sm := http.NewServeMux()
+	sm.Handle("/hello", hh)
+	sm.Handle("/goodbye", gh)
+	sm.Handle("/products", ph)
+
+	s := &http.Server{
+		Addr:         ":9090",
+		Handler:      sm,
+		IdleTimeout:  120 * time.Second,
+		ReadTimeout:  1 * time.Second,
+		WriteTimeout: 1 * time.Second,
+	}
+
+	go func() {
+		err := s.ListenAndServe()
 		if err != nil {
-			http.Error(w, "Oops", http.StatusBadRequest)
-			return
+			l.Fatal(err)
 		}
+	}()
 
-		fmt.Fprintf(w, "Hello %s\n", d)
-	})
+	sigChan := make(chan os.Signal)
+	signal.Notify(sigChan, os.Interrupt)
+	signal.Notify(sigChan, os.Kill)
 
-	http.ListenAndServe(":9090", nil)
+	sig := <-sigChan
+	l.Println("Received terminate, graceful shutdown", sig)
+
+	ct, _ := context.WithTimeout(context.Background(), 30*time.Second)
+	s.Shutdown(ct)
 }
