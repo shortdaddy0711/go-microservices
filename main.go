@@ -9,41 +9,53 @@ import (
 	"time"
 
 	"github.com/shortdaddy0711/go-microservices/handlers"
+
+	"github.com/nicholasjackson/env"
+	"github.com/gorilla/mux"
 )
 
+var bindAddress = env.String("BIND_ADDRESS", false, ":9090", "localhost")
+
 func main() {
+
+	env.Parse()
+
 	l := log.New(os.Stdout, "product-api", log.LstdFlags)
-	hh := handlers.NewHello(l)
-	gh := handlers.NewGoodbye(l)
 	ph := handlers.NewProducts(l)
 
-	sm := http.NewServeMux()
-	sm.Handle("/hello", hh)
-	sm.Handle("/goodbye", gh)
-	sm.Handle("/products", ph)
+	r := mux.NewRouter()
+	s := r.PathPrefix("/products").Subrouter()
+	s.HandleFunc("/", ph.GetProducts).Methods("GET")
+	s.HandleFunc("/", ph.AddProduct).Methods("POST")
+	s.HandleFunc("/{id:[0-9]+}", ph.UpdateProduct).Methods(http.MethodPut)
 
-	s := &http.Server{
-		Addr:         ":9090",
-		Handler:      sm,
+	srv := &http.Server{
+		Addr:         *bindAddress,
+		Handler:      r,
+		ErrorLog:     l,
 		IdleTimeout:  120 * time.Second,
-		ReadTimeout:  1 * time.Second,
-		WriteTimeout: 1 * time.Second,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
 	}
 
 	go func() {
-		err := s.ListenAndServe()
-		if err != nil {
+		l.Println("Starting server on port 9090")
+
+		if err := srv.ListenAndServe(); err != nil {
 			l.Fatal(err)
 		}
 	}()
 
-	sigChan := make(chan os.Signal)
-	signal.Notify(sigChan, os.Interrupt)
-	signal.Notify(sigChan, os.Kill)
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
 
-	sig := <-sigChan
-	l.Println("Received terminate, graceful shutdown", sig)
+	<-c
 
-	ct, _ := context.WithTimeout(context.Background(), 30*time.Second)
-	s.Shutdown(ct)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	srv.Shutdown(ctx)
+
+	l.Println("Received terminate, graceful shutdown")
+	os.Exit(0)
 }
