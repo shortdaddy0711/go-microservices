@@ -24,10 +24,17 @@ func main() {
 	ph := handlers.NewProducts(l)
 
 	r := mux.NewRouter()
-	s := r.PathPrefix("/products").Subrouter()
-	s.HandleFunc("/", ph.GetProducts).Methods("GET")
-	s.HandleFunc("/", ph.AddProduct).Methods("POST")
-	s.HandleFunc("/{id:[0-9]+}", ph.UpdateProduct).Methods(http.MethodPut)
+	postR := r.Methods(http.MethodPost).Subrouter()
+	postR.HandleFunc("/products", ph.AddProduct)
+	postR.Use(ph.MiddlewareProductValidation)
+
+	getR := r.Methods(http.MethodGet).Subrouter()
+	getR.HandleFunc("/products", ph.GetProducts)
+
+	putR := r.Methods(http.MethodPut).Subrouter()
+	putR.HandleFunc("/products/{id:[0-9]+}", ph.UpdateProduct)
+	putR.Use(ph.MiddlewareProductValidation)
+
 
 	srv := &http.Server{
 		Addr:         *bindAddress,

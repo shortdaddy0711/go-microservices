@@ -4,15 +4,18 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"regexp"
 	"time"
+
+	"github.com/go-playground/validator"
 )
 
 type Product struct {
 	ID          int     `json:"id"`
-	Name        string  `json:"name"`
+	Name        string  `json:"name" validate:"required"`
 	Description string  `json:"description"`
-	Price       float32 `json:"price"`
-	SKU         string  `json:"sku"`
+	Price       float32 `json:"price" validate:"gt=0"` // >0
+	SKU         string  `json:"sku" validate:"required,sku"`
 	CreatedOn   string  `json:"-"`
 	UpdatedOn   string  `json:"-"`
 	DeletedOn   string  `json:"-"`
@@ -20,6 +23,19 @@ type Product struct {
 
 func (p *Product) FromJSON(r io.Reader) error {
 	return json.NewDecoder(r).Decode(p)
+}
+
+func (p *Product) Validate() error {
+	validate := validator.New()
+	validate.RegisterValidation("sku", validateSKU)
+	return validate.Struct(p)
+}
+
+func validateSKU(fl validator.FieldLevel) bool {
+	rex := regexp.MustCompile(`[a-z]+-[a-z]+-[a-z]+`)
+	matches := rex.FindAllString(fl.Field().String(), -1)
+
+	return len(matches) == 1
 }
 
 type Products []*Product
@@ -42,11 +58,11 @@ func getNextID() int {
 	return pl.ID + 1
 }
 
-func UpdateProduct(id int, p *Product) error {
+func UpdateProduct(id int, prod *Product) error {
 	for i, p := range productList {
 		if id == p.ID {
-			p.ID = id
-			productList[i] = p
+			prod.ID = id
+			productList[i] = prod
 			return nil
 		}
 
