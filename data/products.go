@@ -14,7 +14,7 @@ type Product struct {
 	ID          int     `json:"id"`
 	Name        string  `json:"name" validate:"required"`
 	Description string  `json:"description"`
-	Price       float32 `json:"price" validate:"gt=0"` // >0
+	Price       float32 `json:"price" validate:"required,gte=0"` // >=0
 	SKU         string  `json:"sku" validate:"required,sku"`
 	CreatedOn   string  `json:"-"`
 	UpdatedOn   string  `json:"-"`
@@ -32,7 +32,7 @@ func (p *Product) Validate() error {
 }
 
 func validateSKU(fl validator.FieldLevel) bool {
-	rex := regexp.MustCompile(`[a-z]+-[a-z]+-[a-z]+`)
+	rex := regexp.MustCompile(`[a-z]{3}-[a-z]{3}-[\d]{3}`)
 	matches := rex.FindAllString(fl.Field().String(), -1)
 
 	return len(matches) == 1
@@ -58,10 +58,9 @@ func getNextID() int {
 	return pl.ID + 1
 }
 
-func UpdateProduct(id int, prod *Product) error {
+func UpdateProduct(prod *Product) error {
 	for i, p := range productList {
-		if id == p.ID {
-			prod.ID = id
+		if prod.ID == p.ID {
 			productList[i] = prod
 			return nil
 		}

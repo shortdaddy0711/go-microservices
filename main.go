@@ -10,8 +10,8 @@ import (
 
 	"github.com/shortdaddy0711/go-microservices/handlers"
 
-	"github.com/nicholasjackson/env"
 	"github.com/gorilla/mux"
+	"github.com/nicholasjackson/env"
 )
 
 var bindAddress = env.String("BIND_ADDRESS", false, ":9090", "localhost")
@@ -24,17 +24,17 @@ func main() {
 	ph := handlers.NewProducts(l)
 
 	r := mux.NewRouter()
+
+	getR := r.Methods(http.MethodGet).Subrouter()
+	getR.HandleFunc("/products", ph.GetProducts)
+	
 	postR := r.Methods(http.MethodPost).Subrouter()
 	postR.HandleFunc("/products", ph.AddProduct)
 	postR.Use(ph.MiddlewareProductValidation)
 
-	getR := r.Methods(http.MethodGet).Subrouter()
-	getR.HandleFunc("/products", ph.GetProducts)
-
 	putR := r.Methods(http.MethodPut).Subrouter()
 	putR.HandleFunc("/products/{id:[0-9]+}", ph.UpdateProduct)
 	putR.Use(ph.MiddlewareProductValidation)
-
 
 	srv := &http.Server{
 		Addr:         *bindAddress,
