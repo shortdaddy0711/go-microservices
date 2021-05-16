@@ -1,52 +1,79 @@
 package data
 
 import (
-	"encoding/json"
 	"errors"
-	"io"
+	"fmt"
 	"regexp"
-	"time"
 
 	"github.com/go-playground/validator"
 )
 
+// ErrProductNotFound is an error raised when a product can not be found in the DB
+var ErrProductNotFound = fmt.Errorf("Product not found")
+
+// Product defines the structure for an product API
+// swagger:model
 type Product struct {
-	ID          int     `json:"id"`
-	Name        string  `json:"name" validate:"required"`
-	Description string  `json:"description"`
-	Price       float32 `json:"price" validate:"required,gte=0"` // >=0
-	SKU         string  `json:"sku" validate:"required,sku"`
-	CreatedOn   string  `json:"-"`
-	UpdatedOn   string  `json:"-"`
-	DeletedOn   string  `json:"-"`
+	// the id for the Product
+	//
+	// required: false
+	// min: 1
+	ID int `json:"id"` // Unique identifier for the product
+
+	// the name for this product
+	//
+	// required: true
+	// max length: 255
+	Name string `json:"name" validate:"required"`
+
+	// the description for this product
+	//
+	// required: false
+	// max length: 10000
+	Description string `json:"description"`
+
+	// the price for this Product
+	//
+	// required: true
+	// min: 0.01
+	Price float32 `json:"price" validate:"required,gte=0"`
+
+	// the SKU for this Product
+	//
+	// required: true
+	// pattern: [a-z]{3}-[a-z]{3}-[\d]{3}
+	SKU string `json:"sku" validate:"required,sku"`
+	// CreatedOn   string  `json:"-"`
+	// UpdatedOn   string  `json:"-"`
+	// DeletedOn   string  `json:"-"`
 }
 
-func (p *Product) FromJSON(r io.Reader) error {
-	return json.NewDecoder(r).Decode(p)
-}
-
-func (p *Product) Validate() error {
-	validate := validator.New()
-	validate.RegisterValidation("sku", validateSKU)
-	return validate.Struct(p)
-}
-
-func validateSKU(fl validator.FieldLevel) bool {
-	rex := regexp.MustCompile(`[a-z]{3}-[a-z]{3}-[\d]{3}`)
-	matches := rex.FindAllString(fl.Field().String(), -1)
-
-	return len(matches) == 1
-}
-
+// Products defines a slice of Product
 type Products []*Product
 
-func (p *Products) ToJSON(w io.Writer) error {
-	return json.NewEncoder(w).Encode(p)
+// findIndexByProductID finds the index of a product in the DB
+// returns -1 if there is no matching product
+func findIndexByProductID(id int) int {
+	for i, p := range productList {
+		if p.ID == id {
+			return i
+		}
+	}
+	return -1
 }
 
+// GetProducts returns all products from the DB
 func GetProducts() Products {
 	return productList
 }
+
+func GetProductByID(id int) (*Product, error) {
+	i := findIndexByProductID(id)
+	if id == -1 {
+		return nil, ErrProductNotFound
+	}
+}
+
 
 func AddProduct(p *Product) {
 	p.ID = getNextID()
@@ -64,7 +91,16 @@ func UpdateProduct(prod *Product) error {
 			productList[i] = prod
 			return nil
 		}
+	}
+	return errors.New("product not found")
+}
 
+func DeleteProduct(id int) error {
+	for i, p := range productList {
+		if id == p.ID {
+			productList = append(productList[:i], productList[i+1:]...)
+			return nil
+		}
 	}
 	return errors.New("product not found")
 }
@@ -76,8 +112,8 @@ var productList = Products{
 		Description: "Frothy milky coffee",
 		Price:       2.45,
 		SKU:         "abc323",
-		CreatedOn:   time.Now().UTC().String(),
-		UpdatedOn:   time.Now().UTC().String(),
+		// CreatedOn:   time.Now().UTC().String(),
+		// UpdatedOn:   time.Now().UTC().String(),
 	},
 	{
 		ID:          2,
@@ -85,7 +121,7 @@ var productList = Products{
 		Description: "Short and string coffee without milk",
 		Price:       1.99,
 		SKU:         "zcv323",
-		CreatedOn:   time.Now().UTC().String(),
-		UpdatedOn:   time.Now().UTC().String(),
+		// CreatedOn:   time.Now().UTC().String(),
+		// UpdatedOn:   time.Now().UTC().String(),
 	},
 }

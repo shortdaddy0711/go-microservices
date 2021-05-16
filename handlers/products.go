@@ -1,3 +1,18 @@
+// Package classification Product API
+//
+// Documentation for Product API
+//
+// 	Schemes: http
+// 	BasePath: /
+// 	Version: 0.0.1
+//
+// 	Consumes:
+// 	- application/json
+//
+// 	Produces:
+// 	- application/json
+//
+// swagger:meta
 package handlers
 
 import (
@@ -12,6 +27,28 @@ import (
 	"github.com/shortdaddy0711/go-microservices/data"
 )
 
+// A list of products returns in the response
+// swagger:response productsResponseWrapper
+type productsResponseWrapper struct {
+	// All products in the system
+	// in: body
+	Body []data.Product
+}
+
+// swagger:response noContent
+type ProductNoContent struct {
+
+}
+
+// swagger:parameters deleteProduct
+type productIDParameterWrapper struct {
+	// The id of the product to delete from the database
+	// in: path
+	// required: true
+	ID int `json:"id"`
+}
+
+
 type Products struct {
 	l *log.Logger
 }
@@ -20,18 +57,6 @@ type KeyProduct struct{}
 
 func NewProducts(l *log.Logger) *Products {
 	return &Products{l}
-}
-
-func (p *Products) GetProducts(w http.ResponseWriter, r *http.Request) {
-	p.l.Println("Handle GET Products")
-	w.Header().Set("Content-Type", "application/json")
-
-	pl := data.GetProducts()
-	err := pl.ToJSON(w)
-	if err != nil {
-		p.l.Println("[ERROR] serializing product", err)
-		http.Error(w, "Error serializing product", http.StatusInternalServerError)
-	}
 }
 
 func (p *Products) AddProduct(w http.ResponseWriter, r *http.Request) {

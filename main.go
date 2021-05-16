@@ -8,6 +8,8 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/go-openapi/runtime/middleware"
+
 	"github.com/shortdaddy0711/go-microservices/handlers"
 
 	"github.com/gorilla/mux"
@@ -17,7 +19,6 @@ import (
 var bindAddress = env.String("BIND_ADDRESS", false, ":9090", "localhost")
 
 func main() {
-
 	env.Parse()
 
 	l := log.New(os.Stdout, "product-api", log.LstdFlags)
@@ -27,7 +28,7 @@ func main() {
 
 	getR := r.Methods(http.MethodGet).Subrouter()
 	getR.HandleFunc("/products", ph.GetProducts)
-	
+
 	postR := r.Methods(http.MethodPost).Subrouter()
 	postR.HandleFunc("/products", ph.AddProduct)
 	postR.Use(ph.MiddlewareProductValidation)
@@ -35,6 +36,15 @@ func main() {
 	putR := r.Methods(http.MethodPut).Subrouter()
 	putR.HandleFunc("/products/{id:[0-9]+}", ph.UpdateProduct)
 	putR.Use(ph.MiddlewareProductValidation)
+
+	// deleteR := r.Methods(http.MethodDelete).Subrouter()
+	// deleteR.HandleFunc("/products/{id:[0-9]+}", ph.DeleteProduct)
+
+	opts := middleware.RedocOpts{SpecURL: "/swagger.yaml"}
+	sh := middleware.Redoc(opts, nil)
+
+	getR.Handle("/docs", sh)
+	getR.Handle("/swagger.yaml", http.FileServer(http.Dir("./")))
 
 	srv := &http.Server{
 		Addr:         *bindAddress,
@@ -65,4 +75,6 @@ func main() {
 
 	l.Println("Received terminate, graceful shutdown")
 	os.Exit(0)
+	nums := []string{"22"}
+	nums = append(nums, "1", "2")
 }
