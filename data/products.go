@@ -1,11 +1,7 @@
 package data
 
 import (
-	"errors"
 	"fmt"
-	"regexp"
-
-	"github.com/go-playground/validator"
 )
 
 // ErrProductNotFound is an error raised when a product can not be found in the DB
@@ -36,13 +32,13 @@ type Product struct {
 	//
 	// required: true
 	// min: 0.01
-	Price float32 `json:"price" validate:"required,gte=0"`
+	Price float32 `json:"price" validate:"required,gt=0"`
 
 	// the SKU for this Product
 	//
 	// required: true
 	// pattern: [a-z]{3}-[a-z]{3}-[\d]{3}
-	SKU string `json:"sku" validate:"required,sku"`
+	SKU string `json:"sku" validate:"sku"`
 	// CreatedOn   string  `json:"-"`
 	// UpdatedOn   string  `json:"-"`
 	// DeletedOn   string  `json:"-"`
@@ -67,42 +63,53 @@ func GetProducts() Products {
 	return productList
 }
 
+// GetProductByID returns a single product which matches the id from the DB
+// and returns a ProductNotFound error if no match in the DB
 func GetProductByID(id int) (*Product, error) {
 	i := findIndexByProductID(id)
-	if id == -1 {
+	if i == -1 {
 		return nil, ErrProductNotFound
 	}
+	return productList[i], nil
 }
 
-
+// AddProduct adds a new product to the DB
 func AddProduct(p *Product) {
 	p.ID = getNextID()
 	productList = append(productList, p)
 }
 
+// getNextID returns id number for new product
 func getNextID() int {
 	pl := productList[len(productList)-1]
 	return pl.ID + 1
 }
 
-func UpdateProduct(prod *Product) error {
-	for i, p := range productList {
-		if prod.ID == p.ID {
-			productList[i] = prod
-			return nil
-		}
+// UpdateProduct replaces a product in the DB with the given item
+// and returns a ProductNotFound error if no match in the DB
+func UpdateProduct(p Product) error {
+	i := findIndexByProductID(p.ID)
+	if i == -1 {
+		return ErrProductNotFound
 	}
-	return errors.New("product not found")
+
+	// update the product
+	productList[i] = &p
+
+	return nil
 }
 
+// DeleteProduct deletes a product in the DB
+// and returns a ProductNotFound error if no match in the DB
 func DeleteProduct(id int) error {
-	for i, p := range productList {
-		if id == p.ID {
-			productList = append(productList[:i], productList[i+1:]...)
-			return nil
-		}
+	i := findIndexByProductID(id)
+	if i == -1 {
+		return ErrProductNotFound
 	}
-	return errors.New("product not found")
+
+	productList = append(productList[:i], productList[i+1:]...)
+
+	return nil
 }
 
 var productList = Products{

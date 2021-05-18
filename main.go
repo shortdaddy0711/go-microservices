@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-openapi/runtime/middleware"
 
+	"github.com/shortdaddy0711/go-microservices/data"
 	"github.com/shortdaddy0711/go-microservices/handlers"
 
 	"github.com/gorilla/mux"
@@ -22,12 +23,18 @@ func main() {
 	env.Parse()
 
 	l := log.New(os.Stdout, "product-api", log.LstdFlags)
-	ph := handlers.NewProducts(l)
+	v := data.NewValidation()
 
+	// create the handler
+	ph := handlers.NewProducts(l, v)
+
+	// create a new serve mux and register the handlers
 	r := mux.NewRouter()
 
+	// handlers for API
 	getR := r.Methods(http.MethodGet).Subrouter()
 	getR.HandleFunc("/products", ph.GetProducts)
+	getR.HandleFunc("/products/{id:[0-9]+}", ph.GetAProduct)
 
 	postR := r.Methods(http.MethodPost).Subrouter()
 	postR.HandleFunc("/products", ph.AddProduct)
@@ -37,9 +44,10 @@ func main() {
 	putR.HandleFunc("/products/{id:[0-9]+}", ph.UpdateProduct)
 	putR.Use(ph.MiddlewareProductValidation)
 
-	// deleteR := r.Methods(http.MethodDelete).Subrouter()
-	// deleteR.HandleFunc("/products/{id:[0-9]+}", ph.DeleteProduct)
+	deleteR := r.Methods(http.MethodDelete).Subrouter()
+	deleteR.HandleFunc("/products/{id:[0-9]+}", ph.DeleteProduct)
 
+	// handler for documentation
 	opts := middleware.RedocOpts{SpecURL: "/swagger.yaml"}
 	sh := middleware.Redoc(opts, nil)
 
@@ -59,14 +67,15 @@ func main() {
 		l.Println("Starting server on port 9090")
 
 		if err := srv.ListenAndServe(); err != nil {
-			l.Fatal(err)
+			l.Fatalf("Error starting server: %s\n", err)
 		}
 	}()
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 
-	<-c
+	sig := <-c
+	log.Println("Got signal: ", sig)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -75,6 +84,4 @@ func main() {
 
 	l.Println("Received terminate, graceful shutdown")
 	os.Exit(0)
-	nums := []string{"22"}
-	nums = append(nums, "1", "2")
 }
