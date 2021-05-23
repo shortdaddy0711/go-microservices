@@ -31,6 +31,7 @@ func (p *Products) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// write the no content success header
 	p.l.Printf("[DEBUG] Updated product: %#v\n", prod)
 	w.WriteHeader(http.StatusNoContent)
 }

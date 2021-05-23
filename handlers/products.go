@@ -1,22 +1,6 @@
-// Package classification Product API
-//
-// Documentation for Product API
-//
-// 	Schemes: http
-// 	BasePath: /
-// 	Version: 0.0.1
-//
-// 	Consumes:
-// 	- application/json
-//
-// 	Produces:
-// 	- application/json
-//
-// swagger:meta
 package handlers
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -42,7 +26,10 @@ func NewProducts(l *log.Logger, v *data.Validation) *Products {
 
 // getProductID returns the product ID from request path
 func getProductID(r *http.Request) int {
+	// parse the product id from the url
 	vars := mux.Vars(r)
+
+	// convert the id into an integer and return
 	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
 		panic(err)
@@ -58,27 +45,4 @@ type GenericError struct {
 
 type ValidationError struct {
 	Messages []string `json:"messages"`
-}
-
-func (p *Products) MiddlewareProductValidation(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		prod := data.Product{}
-		v := data.NewValidation()
-
-		if err := data.FromJSON(prod, r.Body); err != nil {
-			p.l.Println("[ERROR] deserializing product", err)
-			http.Error(w, "Error deserializing product", http.StatusBadRequest)
-			return
-		}
-
-		if err := v.Validate(prod); err != nil {
-			p.l.Println("[ERROR] validating product", err)
-			http.Error(w, fmt.Sprintf("Error validating product: %s\n", err), http.StatusBadRequest)
-			return
-		}
-
-		ctx := context.WithValue(r.Context(), KeyProduct{}, prod)
-
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
 }
